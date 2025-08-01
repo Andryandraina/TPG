@@ -1,149 +1,170 @@
-import React, { useState } from 'react';
-import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import format from 'date-fns/format';
-import parse from 'date-fns/parse';
-import startOfWeek from 'date-fns/startOfWeek';
-import getDay from 'date-fns/getDay';
-import fr from 'date-fns/locale/fr';
-import 'react-big-calendar/lib/css/react-big-calendar.css';
+import React, { useState } from "react";
+import {
+  Calendar,
+  dateFnsLocalizer,
+  Views,
+} from "react-big-calendar";
+import format from "date-fns/format";
+import parse from "date-fns/parse";
+import startOfWeek from "date-fns/startOfWeek";
+import getDay from "date-fns/getDay";
+import fr from "date-fns/locale/fr";
+import "react-big-calendar/lib/css/react-big-calendar.css";
+import { Dialog } from "@headlessui/react";
+import { v4 as uuidv4 } from "uuid";
 
-const locales = { fr: fr };
-
+const locales = {
+  fr: fr,
+};
 const localizer = dateFnsLocalizer({
   format,
   parse,
-  startOfWeek: () => startOfWeek(new Date(), { weekStartsOn: 1 }),
+  startOfWeek,
   getDay,
   locales,
 });
 
-export default function MissionCalendar() {
+const MissionCalendar = () => {
   const [events, setEvents] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    start: '',
-    end: '',
+  const [newMission, setNewMission] = useState({
+    title: "",
+    start: "",
+    end: "",
   });
-
-  const eventStyleGetter = () => ({
-    style: {
-      backgroundColor: '#10b981',
-      color: 'white',
-      borderRadius: '0.5rem',
-      padding: '4px 8px',
-      fontSize: '0.875rem',
-    },
-  });
+  const [view, setView] = useState(Views.WEEK);
 
   const handleAddEvent = () => {
-    if (!newEvent.title || !newEvent.start || !newEvent.end) {
-      alert('Tous les champs sont requis');
-      return;
-    }
+    if (!newMission.title || !newMission.start || !newMission.end) return;
 
-    const start = new Date(newEvent.start);
-    const end = new Date(newEvent.end);
+    const newStart = new Date(newMission.start);
+    const newEnd = new Date(newMission.end);
 
-    if (start > end) {
-      alert('La date de fin doit être après la date de début');
-      return;
-    }
-
-    const conflict = events.some(
+    const overlap = events.some(
       (event) =>
-        (start <= new Date(event.end) && end >= new Date(event.start))
+        newStart <= new Date(event.end) && newEnd >= new Date(event.start)
     );
 
-    if (conflict) {
-      alert("Conflit : une autre mission existe sur cette période");
+    if (overlap) {
+      alert("Une mission est déjà assignée à cette date.");
       return;
     }
 
-    setEvents([...events, { ...newEvent, start, end }]);
-    setNewEvent({ title: '', start: '', end: '' });
+    const missionToAdd = {
+      id: uuidv4(),
+      title: newMission.title,
+      start: newStart,
+      end: newEnd,
+      allDay: true,
+    };
+
+    setEvents([...events, missionToAdd]);
+    setNewMission({ title: "", start: "", end: "" });
     setShowModal(false);
   };
 
+  const eventStyleGetter = () => {
+    return {
+      style: {
+        backgroundColor: "#2563eb",
+        borderRadius: "0.5rem",
+        color: "white",
+        border: "none",
+        display: "block",
+        padding: "0.25rem 0.5rem",
+      },
+    };
+  };
+
   return (
-    <div className="p-4">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold">📆 Planning des missions</h2>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
-        >
-          + Ajouter une mission
-        </button>
+    <div className="p-4 h-[calc(100vh-4rem)] flex flex-col">
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-xl font-semibold">Planning des Missions</h1>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setView(Views.WEEK)}
+            className={`px-3 py-1 rounded ${view === Views.WEEK ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          >
+            Semaine
+          </button>
+          <button
+            onClick={() => setView(Views.MONTH)}
+            className={`px-3 py-1 rounded ${view === Views.MONTH ? "bg-blue-600 text-white" : "bg-gray-200"}`}
+          >
+            Mois
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-1 bg-green-600 text-white rounded"
+          >
+            + Ajouter une mission
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-md overflow-hidden h-[65vh]">
+      <div className="flex-1 min-h-0">
         <Calendar
           localizer={localizer}
           events={events}
           startAccessor="start"
           endAccessor="end"
-          defaultView="week"
-          views={['week', 'month']}
+          view={view}
+          onView={(newView) => setView(newView)}
+          views={[Views.WEEK, Views.MONTH]}
           culture="fr"
-          style={{ height: '100%', fontSize: '0.875rem' }}
+          defaultDate={new Date()}
           eventPropGetter={eventStyleGetter}
+          style={{ height: "100%" }}
+          toolbar={false}
+          min={new Date(0, 0, 0, 7, 0)}
+          max={new Date(0, 0, 0, 18, 0)}
         />
       </div>
 
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
-            <h3 className="text-lg font-bold mb-4">Nouvelle mission</h3>
-
+      <Dialog open={showModal} onClose={() => setShowModal(false)} className="fixed z-10 inset-0 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen">
+          <Dialog.Panel className="bg-white p-6 rounded-lg w-full max-w-md shadow-xl">
+            <Dialog.Title className="text-lg font-medium mb-4">Nouvelle mission</Dialog.Title>
             <input
               type="text"
               placeholder="Titre de la mission"
-              value={newEvent.title}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, title: e.target.value })
-              }
-              className="w-full border p-2 mb-3 rounded"
+              className="border p-2 w-full mb-2"
+              value={newMission.title}
+              onChange={(e) => setNewMission({ ...newMission, title: e.target.value })}
             />
-
-            <label className="text-sm text-gray-600">Début</label>
+            <label className="block text-sm font-medium">Date de début</label>
             <input
               type="date"
-              value={newEvent.start}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, start: e.target.value })
-              }
-              className="w-full border p-2 mb-3 rounded"
+              className="border p-2 w-full mb-2"
+              value={newMission.start}
+              onChange={(e) => setNewMission({ ...newMission, start: e.target.value })}
             />
-
-            <label className="text-sm text-gray-600">Fin</label>
+            <label className="block text-sm font-medium">Date de fin</label>
             <input
               type="date"
-              value={newEvent.end}
-              onChange={(e) =>
-                setNewEvent({ ...newEvent, end: e.target.value })
-              }
-              className="w-full border p-2 mb-4 rounded"
+              className="border p-2 w-full mb-4"
+              value={newMission.end}
+              onChange={(e) => setNewMission({ ...newMission, end: e.target.value })}
             />
-
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowModal(false)}
-                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                className="px-4 py-1 bg-gray-300 rounded"
               >
                 Annuler
               </button>
               <button
                 onClick={handleAddEvent}
-                className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+                className="px-4 py-1 bg-blue-600 text-white rounded"
               >
                 Ajouter
               </button>
             </div>
-          </div>
+          </Dialog.Panel>
         </div>
-      )}
+      </Dialog>
     </div>
   );
-}
+};
+
+export default MissionCalendar;
