@@ -1,5 +1,4 @@
-// components/MissionCalendar.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
@@ -8,9 +7,7 @@ import getDay from 'date-fns/getDay';
 import fr from 'date-fns/locale/fr';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
-const locales = {
-  fr: fr,
-};
+const locales = { fr: fr };
 
 const localizer = dateFnsLocalizer({
   format,
@@ -20,68 +17,133 @@ const localizer = dateFnsLocalizer({
   locales,
 });
 
-// Liste des événements
-const events = [
-  {
-    title: '🌀 Kickoff Projet',
-    start: new Date(2025, 7, 1, 9, 0),
-    end: new Date(2025, 7, 1, 10, 0),
-  },
-  {
-    title: '🎨 Réunion Design',
-    start: new Date(2025, 7, 2, 14, 0),
-    end: new Date(2025, 7, 2, 15, 0),
-  },
-  {
-    title: '🍕 Lunch Team',
-    start: new Date(2025, 7, 3, 12, 0),
-    end: new Date(2025, 7, 3, 13, 0),
-  },
-  {
-    title: '🎉 Happy Hour',
-    start: new Date(2025, 7, 4, 16, 0),
-    end: new Date(2025, 7, 4, 17, 0),
-  },
-];
+export default function MissionCalendar() {
+  const [events, setEvents] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    start: '',
+    end: '',
+  });
 
-// Fonction pour colorier les événements
-const eventStyleGetter = (event) => {
-  let bgColor = '#3b82f6'; // par défaut : bleu Tailwind
+  const eventStyleGetter = () => ({
+    style: {
+      backgroundColor: '#10b981',
+      color: 'white',
+      borderRadius: '0.5rem',
+      padding: '4px 8px',
+      fontSize: '0.875rem',
+    },
+  });
 
-  if (event.title.includes('Design')) bgColor = '#22d3ee'; // cyan
-  else if (event.title.includes('Lunch')) bgColor = '#facc15'; // jaune
-  else if (event.title.includes('Happy')) bgColor = '#ef4444'; // rouge
-  else if (event.title.includes('Kickoff')) bgColor = '#6366f1'; // indigo
+  const handleAddEvent = () => {
+    if (!newEvent.title || !newEvent.start || !newEvent.end) {
+      alert('Tous les champs sont requis');
+      return;
+    }
 
-  const style = {
-    backgroundColor: bgColor,
-    color: 'white',
-    borderRadius: '0.5rem',
-    padding: '4px 8px',
-    border: 'none',
-    fontSize: '0.875rem',
+    const start = new Date(newEvent.start);
+    const end = new Date(newEvent.end);
+
+    if (start > end) {
+      alert('La date de fin doit être après la date de début');
+      return;
+    }
+
+    const conflict = events.some(
+      (event) =>
+        (start <= new Date(event.end) && end >= new Date(event.start))
+    );
+
+    if (conflict) {
+      alert("Conflit : une autre mission existe sur cette période");
+      return;
+    }
+
+    setEvents([...events, { ...newEvent, start, end }]);
+    setNewEvent({ title: '', start: '', end: '' });
+    setShowModal(false);
   };
 
-  return { style };
-};
-
-export default function MissionCalendar() {
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-semibold mb-4">📅 Calendrier des missions</h2>
-      <div className="rounded-lg shadow bg-white overflow-hidden h-[80vh]">
+    <div className="p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">📆 Planning des missions</h2>
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700"
+        >
+          + Ajouter une mission
+        </button>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-md overflow-hidden h-[65vh]">
         <Calendar
           localizer={localizer}
           events={events}
           startAccessor="start"
           endAccessor="end"
           defaultView="week"
-          views={['week', 'day', 'month']}
+          views={['week', 'month']}
           culture="fr"
-          style={{ height: '100%' }}
+          style={{ height: '100%', fontSize: '0.875rem' }}
           eventPropGetter={eventStyleGetter}
         />
       </div>
+
+      {/* MODAL */}
+      {showModal && (
+        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-lg">
+            <h3 className="text-lg font-bold mb-4">Nouvelle mission</h3>
+
+            <input
+              type="text"
+              placeholder="Titre de la mission"
+              value={newEvent.title}
+              onChange={(e) =>
+                setNewEvent({ ...newEvent, title: e.target.value })
+              }
+              className="w-full border p-2 mb-3 rounded"
+            />
+
+            <label className="text-sm text-gray-600">Début</label>
+            <input
+              type="date"
+              value={newEvent.start}
+              onChange={(e) =>
+                setNewEvent({ ...newEvent, start: e.target.value })
+              }
+              className="w-full border p-2 mb-3 rounded"
+            />
+
+            <label className="text-sm text-gray-600">Fin</label>
+            <input
+              type="date"
+              value={newEvent.end}
+              onChange={(e) =>
+                setNewEvent({ ...newEvent, end: e.target.value })
+              }
+              className="w-full border p-2 mb-4 rounded"
+            />
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowModal(false)}
+                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleAddEvent}
+                className="px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700"
+              >
+                Ajouter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
